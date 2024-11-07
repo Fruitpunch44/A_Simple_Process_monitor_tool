@@ -70,9 +70,6 @@ python Process.py
 The script will provide a menu that has options the user can pick from ranging from listing all processes,terminating process etc.
 
 
-
-This will output detailed information for the process with PID `5678`.
-
 ### Bug Reports and Feature Requests
 
 Please report any bugs or feature requests by opening an issue in the **Issues** section of the repository. .
