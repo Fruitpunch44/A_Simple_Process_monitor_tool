@@ -504,14 +504,15 @@ class Monitor:
                     print(f'{e}')
                     logging.info(f'{e}')
 
-
+#work in progress
 class Task_Scheduler:
     def __init__(self, args):
         self.args = args
 
+    #work in progress
     def virus_updates(self):
         pass
-
+    #work in o
     def run_program(self):
         #script
         #exe
