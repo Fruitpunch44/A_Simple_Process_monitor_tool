@@ -64,7 +64,7 @@ After ensuring the prerequisites are installed, the tool is ready to use. There'
 To start the tool, simply run the `Process.py` script:
 
 ```bash
-python Process.py
+python Process.py -MON
 ```
 
 The script will provide a menu that has options the user can pick from ranging from listing all processes,terminating process etc.
