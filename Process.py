@@ -97,6 +97,11 @@ class Monitor:
             if name != 'percent':
                 value = bytes2human(value)
                 print('%-10s : %7s' % (name.capitalize(), value))
+    @staticmethod
+    def draw_table(data, headers):  # draws a table to visualize the info being displayed to the user 
+        table = tabulate(data, headers=headers, tablefmt='fancy_grid',
+                         numalign='right')
+        return table
 
     # search for processes
     def search_process(self) -> any:
@@ -114,11 +119,12 @@ class Monitor:
                 logging.info(f'error in searching for process {args.Search} {e}')
         return self.args.Search
 
-    @staticmethod
-    def list_all_processes() -> None:
+   
+    def list_all_processes(self) -> None:
         # list all process and return their pids,name and memory usage
         while True:
             data = []
+            headers = ["PID", "NAME", "MEMORY USAGE", "STATUS"]
             try:
                 for proc in psutil.process_iter(['pid', 'name', 'memory_info', 'status']):
                     # append all process to the data list
@@ -128,15 +134,9 @@ class Monitor:
                     # clears the terminal every time the table is printed to
                     # simulate a live menu screen
                     print("\033c", end='')
-
-                    table = tabulate(data,
-                                     headers=["PID", "NAME", "MEMORY USAGE", "STATUS"],
-                                     tablefmt="fancy_grid",
-                                     numalign="right")
-
+                    table = self.draw_table(data, headers)
                     print(table)
                     time.sleep(2)
-
                 except KeyboardInterrupt:
                     print(f'monitoring was stopped')
                     logging.info(f'monitoring was stopped')
@@ -177,19 +177,17 @@ class Monitor:
         print('Memory info *********')
         return self.convert_bytes(psutil.virtual_memory())
 
-    @staticmethod
-    def check_disk_info():
+    
+    def check_disk_info(self):
         # show all physical disk partitions available
         data = []
+        headers = ['Device', 'Total Space', 'Used', 'free']
         for part in psutil.disk_partitions(all=False):
             usage = psutil.disk_usage(part.mountpoint)
             data.append([part.device, bytes2human(usage.total),
                          bytes2human(usage.used),
                          bytes2human(usage.free)])
-        table = tabulate(data,
-                         headers=['Device', 'Total Space', 'Used', 'free'],
-                         tablefmt='fancy_grid',
-                         numalign='right')
+        table = self.draw_table(data, headers)
         print(table)
 
     def set_up_plot_cpu(self) -> None:
@@ -263,13 +261,11 @@ class Monitor:
         # filter by actively running processes
         if self.args.Filter == 'Filter Running':
             running_filter = []
+            headers = ["PID", "NAME", "MEMORY USAGE", "STATUS"]
             for p in psutil.process_iter(['name', 'status']):
                 if p.status() == psutil.STATUS_RUNNING:
                     running_filter.append([p.pid, p.name(), p.status()])
-            table = tabulate(running_filter,
-                             headers=["PID", "NAME", "MEMORY USAGE", "STATUS"],
-                             tablefmt="fancy_grid",
-                             numalign="right")
+            table = self.draw_table(running_filter, headers)
             print(table)
 
         # filter by memory usage
@@ -277,20 +273,19 @@ class Monitor:
             # set threshold
             threshold = 100 * 1024 * 1024  # 100mb limit
             mem_filter = []
+            headers = ["PID", "NAME", "MEMORY USAGE", "STATUS"]
             for p in psutil.process_iter(['pid', 'name', 'memory_info']):
                 if p.memory_info().rss > threshold:
                     mem_filter.append([p.pid, p.name(), bytes2human(p.memory_info().rss)])
                     logging.info(
                         f'pid:{p.pid} name:{p.name()} is using {bytes2human(p.memory_info().rss)} '
                         f'which is more than the threshold:{bytes2human(threshold)}')
-            table = tabulate(mem_filter,
-                             headers=["PID", "NAME", "MEMORY USAGE", "STATUS"],
-                             tablefmt="fancy_grid",
-                             numalign="right")
+            table = self.draw_table(mem_filter, headers)
             print(table)
 
         elif self.args.Filter == 'Filter Zombie':
             zombie_filter = []
+            headers = ["PID", "NAME", "MEMORY USAGE", "STATUS"]
             # filter by actively running processes
             for p in psutil.process_iter(['pid', 'name', 'status']):
                 try:
@@ -298,16 +293,13 @@ class Monitor:
                         zombie_filter.append([p.pid, p.name(), p.status()])
                 except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
                     logging.error(f'an error occurred {e}')
-            table = tabulate(zombie_filter,
-                             headers=["PID", "NAME", "MEMORY USAGE", "STATUS"],
-                             tablefmt="fancy_grid",
-                             numalign="right")
-
+            table = self.draw_table(zombie_filter, headers)
             print(table)
 
         elif self.args.Filter == 'Filter Sleeping':
             # filter by actively running processes
             sleeping_filter = []
+            headers = ["PID", "NAME", "MEMORY USAGE", "STATUS"]
             for p in psutil.process_iter(['pid', 'name', 'status']):
                 try:
                     if p.status() == psutil.STATUS_SLEEPING:
@@ -315,14 +307,12 @@ class Monitor:
                 except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
                     logging.error(f'an error occurred {e}')
 
-            table = tabulate(sleeping_filter,
-                             headers=["PID", "NAME", "MEMORY USAGE", "STATUS"],
-                             tablefmt="fancy_grid",
-                             numalign="right")
+            table = self.draw_table(sleeping_filter, headers)
             print(table)
 
         elif self.args.Filter == 'Filter Cpu Usage':
             cpu_filter = []
+            headers = ["PID", "NAME", "CPU_PERCENT(%)"]
             threshold = int(input('enter the threshold you wish to use: '))
             for p in psutil.process_iter(['pid', 'name', 'cpu_percent']):
                 try:
@@ -336,15 +326,11 @@ class Monitor:
                         break
                 except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
                     logging.error(f'an error occurred{e}')
-            table = tabulate(cpu_filter,
-                             headers=["PID", "NAME", "CPU_PERCENT(%)"],
-                             tablefmt="fancy_grid",
-                             numalign="right")
+            table = self.draw_table(cpu_filter, headers)
             print(table)
 
     # display process that have network connection
-    @staticmethod
-    def network():
+    def network(self):
         # create protocol map to make the protocol being returned by
         # connection type and connect family to be readable
         proto_map = {
@@ -355,6 +341,7 @@ class Monitor:
         }
         try:
             data = []
+            headers = ["PID", "NAME", "STATUS", "PROTOCOL", "LOCAL ADDRESS", "REMOTE ADDRESS "]
             for proc in psutil.process_iter(['pid', 'name', 'status']):
                 connections = proc.connections()
                 for connection in connections:
@@ -367,18 +354,15 @@ class Monitor:
                     data.append([proc.pid, proc.name(), proc.status(), proto_map[(connection.family, connection.type)],
                                  connection.laddr, remote_addr])
                     # show process information pid,name,status
-            table = tabulate(data,
-                             headers=["PID", "NAME", "STATUS", "PROTOCOL", "LOCAL ADDRESS", "REMOTE ADDRESS "],
-                             numalign='right',
-                             tablefmt='fancy_grid'
-                             )
+            table = self.draw_table(data, headers)
             print(table)
         except (psutil.AccessDenied, psutil.NoSuchProcess, psutil.Error) as e:
             logging.error(f'an error occurred {e}')
 
-    @staticmethod
-    def show_windows_services():
+   
+    def show_windows_services(self):
         data = []
+        headers = ["NAME", "BINPATH", "STATUS", "START TYPE", "DESCRIPTION"]
         # loop through all Windows services and display info about them
         for services in list(psutil.win_service_iter()):
             try:
@@ -390,25 +374,21 @@ class Monitor:
                 logging.error(f'an error occurred {e}')
                 print(f'ERROR{e}')
 
-        table = tabulate(data,
-                         headers=["NAME", "BINPATH", "STATUS", "START TYPE", "DESCRIPTION"],
-                         numalign='left',
-                         tablefmt='fancy_grid')
+        table = self.draw_table(data, headers)
         print(table)
 
-    @staticmethod
-    def search_for_service(name):
+    
+    def search_for_service(self):
+        name: str = input('enter the service you want to search for:')
         data = []
+        headers = ["NAME", "BINPATH", "STATUS", "START TYPE", "DESCRIPTION"]
         try:
             search = psutil.win_service_get(name)
             service_info = search.as_dict()  # shows all the information of the service as a dictionary
             data.append([service_info['name'], service_info['binpath'][:60],
                          service_info['status'], service_info['start_type'],
                          service_info['description'][:300]])  # to manage excess spaces on the table
-            table = tabulate(data,
-                             headers=["NAME", "BINPATH", "STATUS", "START TYPE", "DESCRIPTION"],
-                             numalign='left',
-                             tablefmt='fancy_grid')
+            table = self.draw_table(data, headers)
             print(table)
         except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
             print(f'error{e}')
